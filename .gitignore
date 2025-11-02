@@ -1,0 +1,7 @@
+/venv
+/Plant_Disease_Dataset
+.streamlit
+.idea
+/__pycache__
+trained_model.keras
+secrets.toml
