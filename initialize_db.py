@@ -1,4 +1,9 @@
 import pymongo
+
+# IMPORTANT: Replace this with your MongoDB Atlas connection string
+# Example: "mongodb+srv://<username>:<password>@<cluster-url>/<database-name>?retryWrites=true&w=majority"
+MONGO_ATLAS_CONNECTION_STRING = "YOUR_MONGODB_ATLAS_CONNECTION_STRING" 
+
 disease_management =[
   {
     "disease": "Apple___Apple_scab",
@@ -445,9 +450,18 @@ disease_management =[
 ]
   
 if __name__ == "__main__":
-    client = pymongo.MongoClient("mongodb://localhost:27017/")
-    db = client["NewDataBase"] 
-    collection = db['SampleCollection']
-    print("Database connected:", db.name)
-    collection.insert_many(disease_management)
-    
+    try:
+        client = pymongo.MongoClient(MONGO_ATLAS_CONNECTION_STRING)
+        db = client["NewDataBase"] 
+        collection = db['SampleCollection']
+        print("Database connected:", db.name)
+        
+        # Optional: Clear existing data before inserting if you want a fresh start
+        collection.delete_many({})
+        
+        collection.insert_many(disease_management)
+        print("Data uploaded successfully to MongoDB Atlas!")
+    except pymongo.errors.ConnectionFailure as e:
+        print(f"Could not connect to MongoDB Atlas: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")

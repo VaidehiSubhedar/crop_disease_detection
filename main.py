@@ -6,7 +6,17 @@ import uuid
 import requests
 import json
 from datetime import datetime
+import os
 
+# Function to download the model if it doesn't exist
+def download_model(url, filename="trained_model.keras"):
+    if not os.path.exists(filename):
+        with st.spinner("Downloading model... This may take a moment."):
+            response = requests.get(url, stream=True)
+            with open(filename, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+    return filename
 
 # Tensorflow ModelPrediction
 def model_prediction(test_image):
@@ -20,6 +30,11 @@ def model_prediction(test_image):
 
 # Set page configuration
 st.set_page_config(page_title="Crop Disease Prediction", layout="wide")
+
+# Download the model
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1hKdVBqDclxYLQuUzyVmgsBMvRwPRMU86" # <-- IMPORTANT: REPLACE WITH YOUR MODEL'S DOWNLOAD LINK
+download_model(MODEL_URL)
+
 
 st.markdown("""
     <style>
@@ -89,9 +104,9 @@ if col3.button("Settings"):
 st.markdown("</div>", unsafe_allow_html=True)
 
 def get_mongo_connection():
-    client = MongoClient("mongodb://localhost:27017/")
+    client = MongoClient(st.secrets["connections"]["mongodb_uri"])
     db = client["NewDataBase"]
-    return db["SampleCollection"]
+    return db
 
 if 'prediction_made' not in st.session_state:
     st.session_state.prediction_made = False
@@ -185,7 +200,8 @@ if st.session_state.selected_page == "Home":
 
     # Show preventions & remedies
     if st.session_state.get("prediction_made") and st.session_state.get("predicted_disease"):
-        collection = get_mongo_connection()
+        db = get_mongo_connection()
+        collection = db["SampleCollection"]
 
         def get_preventions(disease):
             record = collection.find_one({"disease": disease})
@@ -206,8 +222,7 @@ if st.session_state.selected_page == "Home":
 
 # Agri Community Page
 elif st.session_state.selected_page == "Agri Community":
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["NewDataBase"]
+    db = get_mongo_connection()
     collection = db["agri_community"]
 
     st.markdown("<h1 class='main-title'>📌 Agri Community</h1>", unsafe_allow_html=True)
@@ -270,7 +285,7 @@ elif st.session_state.selected_page == "Agri Community":
         if answers:
             with st.expander("View Answers"):
                 for ans in answers:
-                    st.markdown(f"🗨️ **{ans.get('email', 'Anonymous')}**: {ans.get('text', '')}")
+                    st.markdown(f"🗨️ **{ans.get('email', 'Anonymous')}: {ans.get('text', '')}")
 
 
 if "cart" not in st.session_state:
@@ -303,8 +318,7 @@ elif st.session_state.selected_page == "Settings":
                 email = st.session_state.login_email
                 password = st.session_state.login_password
                 # Make Mongo collection to store email and password
-                client3 = MongoClient("mongodb://localhost:27017/")
-                db3 = client3["NewDataBase"]
+                db3 = get_mongo_connection()
                 users_collection = db3["users"]
 
                 user = users_collection.find_one({"email": email, "password": password})   
@@ -320,7 +334,7 @@ elif st.session_state.selected_page == "Settings":
         else:  
             name = st.text_input("Full Name", key="signup_name")
             email = st.text_input("Email", key="signup_email")
-            password = st.text_input("Password", type="password", key="signup_password")
+            password = st.text_input("Password", type="password", key="signup_.password")
             confirm_password = st.text_input("Confirm Password", type="password", key="signup_confirm_password")
           
             if st.button("📝 Sign Up"):
@@ -336,8 +350,7 @@ elif st.session_state.selected_page == "Settings":
                     st.error("❌ Passwords do not match.")
 
                 else:
-                    client3 = MongoClient("mongodb://localhost:27017/")
-                    db3 = client3["NewDataBase"]
+                    db3 = get_mongo_connection()
                     users_collection = db3["users"]
 
                     if users_collection.find_one({"email": email}):
@@ -379,8 +392,7 @@ elif st.session_state.selected_page == "Settings":
             profile_email = st.session_state.get("profile_email" , "").strip()
             address = st.session_state.get("profile_address" , "").strip()
 
-            client3 = MongoClient("mongodb://localhost:27017/")
-            db3 = client3["NewDataBase"]
+            db3 = get_mongo_connection()
             profiles_collection = db3["profiles"]
 
             profiles_collection.insert_one({
@@ -431,4 +443,3 @@ elif st.session_state.selected_page == "Settings":
         topics = ["Organic Farming", "Disease Prevention", "Climate-based Advice", "Soil Health", "Pesticide-Free Methods"]
         selected_topics = st.multiselect("Select Topics to Follow", topics, key="selected_topics")
         st.button("✅ Follow Selected Topics", key="follow_topics")
-
